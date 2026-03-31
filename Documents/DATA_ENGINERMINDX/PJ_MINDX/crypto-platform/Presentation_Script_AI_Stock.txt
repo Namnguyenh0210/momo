@@ -1,0 +1,236 @@
+====================================================================
+BỘ KHUNG THUYẾT TRÌNH BẢO VỆ DỰ ÁN DATA ENGINEER: AI STOCK ASSISTANT
+====================================================================
+
+Lưu ý khi làm PPT:
+- 1 Slide chỉ giữ lại các "Bullet point trên Slide" (Dòng có bullet).
+- Phần "Gợi ý thuyết trình (Nói)" là kịch bản để bạn học thuộc / hiểu để trình bày, KHÔNG cho vào slide.
+- Những chỗ có (CẦN HÌNH ẢNH) thì bạn cắt hình (snippet) từ code hoặc hệ thống dán vào nhé!
+
+---
+
+# SLIDE 1: TITLE (Giới thiệu đề tài)
+
+[Nội dung trên Slide]
+- Tên đề tài: AI STOCK ASSISTANT & DATA PIPELINE PLATFORM
+  (Hệ thống Pipeline Dữ Liệu và Trợ Lý AI Hỗ Trợ Đầu Tư Chứng Khoán)
+- Học viên trình bày: [Tên của bạn]
+- Lớp / Khóa học: Data Engineering - MindX
+- Giảng viên hướng dẫn: [Tên giảng viên]
+
+[Gợi ý thuyết trình (Nói)]
+"Chào thầy/cô và các bạn. Hôm nay em xin trình bày về dự án cuối khóa của em: AI Stock Assistant & Data Pipeline Platform. Đây là một hệ thống thu thập, xử lý dữ liệu chứng khoán tự động và kết hợp trí tuệ nhân tạo (AI) để hỗ trợ người dùng ra quyết định đầu tư."
+
+---
+
+# SLIDE 2: PROBLEM STATEMENT (Bài toán)
+
+[Nội dung trên Slide]
+Vấn đề thị trường hiện tại:
+- Sự bùng nổ của dữ liệu tài chính nhưng người dùng mới (F0) gặp khó khăn khi tiếp cận.
+- Gặp khó khăn trong việc đọc hiểu các chỉ số (MA5, MA10, Volatility).
+- Thiếu thông tin được tổng hợp, xử lý sẵn để ra quyết định nhanh chóng.
+- Cần một công cụ có thể tự động trả lời, diễn giải số liệu thay vì chỉ nhìn vào các biểu đồ tĩnh.
+
+[Gợi ý thuyết trình (Nói)]
+"Hiện nay, dữ liệu trên thị trường chứng khoán là khổng lồ. Tuy nhiên, dữ liệu thô thường rất khó đọc đối với những nhà đầu tư mới. Họ không hiểu rõ ranh giới của các chỉ số kỹ thuật như MA5 hay MA10. Chính vì vậy, bài toán đặt ra là: Làm sao để chuyển hóa đống dữ liệu thô ấy thành nguồn thông tin dễ hiểu, và có một 'trợ lý' giải thích ngay khi người dùng cần?"
+
+---
+
+# SLIDE 3: OBJECTIVE (Mục tiêu hệ thống)
+
+[Nội dung trên Slide]
+Mục tiêu cốt lõi: Thiết kế một Data Platform End-to-End:
+- Thu thập (Ingestion): Tự động lấy dữ liệu chứng khoán (Alpha Vantage API).
+- Xử lý (Data Pipeline): Xây dựng luồng ETL chuẩn mực, tự động hóa bằng Airflow.
+- Lưu trữ (Storage): Lưu trữ dữ liệu chuẩn Data Warehouse (Medallion Architecture: Bronze, Silver, Gold).
+- Trải nghiệm (UI & AI): Giao diện trực quan kết hợp Chatbot AI (GPT-4o) tư vấn dữ liệu theo thời gian thực.
+
+[Gợi ý thuyết trình (Nói)]
+"Để giải quyết bài toán trên, dự án này không chỉ xây dựng một ứng dụng web, mà chú trọng đặc biệt vào hệ thống Data Backend: Tự động thu thập qua API, xử lý ETL, lưu trữ theo cấu trúc Data Warehouse chuẩn, và quan trọng là tích hợp AI GPT-4 để phân tích các chỉ số tài chính bằng ngôn ngữ tự nhiên."
+
+---
+
+# SLIDE 4: SYSTEM OVERVIEW (Tổng quan hệ thống) 🔥 (SLIDE QUAN TRỌNG NHẤT)
+
+[Nội dung trên Slide]
+(CẦN HÌNH ẢNH: Vẽ một sơ đồ Kiến Trúc / Architecture Diagram)
+- NGUỒN (Data Source): Alpha Vantage API
+- ĐIỀU PHỐI (Orchestration): Apache Airflow (Schedule DAG)
+- XỬ LÝ (ETL): Python (Pandas/NumPy)
+- LƯU TRỮ (Data Warehouse): PostgreSQL (Bronze -> Silver -> Gold)
+- BACKEND: Node.js (Express)
+- GIAO DIỆN (Frontend): Dashboard trực quan + Chart.js
+- AI ENGINE: OpenAI API (GPT-4)
+
+[Gợi ý thuyết trình (Nói)]
+"Đây là bức tranh tổng thể của hệ thống. Dữ liệu giá cổ phiếu được kéo về từ Alpha Vantage API. Quá trình này được đặt lịch và quản lý tự động bằng Apache Airflow. Dữ liệu thô đi qua luồng ETL chạy bằng Python, sau đó nạp vào PostgreSQL được thiết kế theo mô hình Medallion (Bronze-Silver-Gold). Phía trên cùng, Backend Node.js sẽ truy vấn DB để phục vụ lên Dashboard hiển thị biểu đồ, đồng thời cấp bối cảnh (context) cho AI Chatbot giải đáp thắc mắc người dùng."
+
+---
+
+# SLIDE 5: DATA SOURCES (Nguồn dữ liệu)
+
+[Nội dung trên Slide]
+API cung cấp dữ liệu:
+- Nguồn chính: Alpha Vantage API
+- Dữ liệu thu thập:
+  + Cổ phiếu top đầu: AAPL, MSFT, GOOGL, TSLA, NVDA...
+  + Lịch sử giá theo thời gian (Time-series data)
+  + Các thuộc tính cốt lõi: Open, High, Low, Close (OHLC), Volume
+- Định dạng nguyên bản: JSON
+
+[Gợi ý thuyết trình (Nói)]
+"Về dữ liệu, em sử dụng Alpha Vantage làm nguồn chính để lấy lịch sử giao dịch của các mã cổ phiếu công nghệ lớn như Apple, Microsoft, Tesla... Dữ liệu trả về dưới dạng JSON bao gồm mức giá mở cửa, đóng cửa, giá trần, giá sàn và khối lượng giao dịch. Hệ thống kéo tự động định kỳ bằng thư viện requests của Python. Ngoài ra hệ thống còn lấy cả tin bài thị trường và gán mác Sentiment (Tâm lý nhà đầu tư)."
+
+---
+
+# SLIDE 6: DATA PIPELINE (Quá trình ETL) 🔥 (SLIDE ĂN ĐIỂM DATA ENGINEER)
+
+[Nội dung trên Slide]
+(CẦN HÌNH ẢNH: Ảnh chụp Python script đoạn Extract JSON thô và đoạn Transform dùng Pandas)
+Chi tiết quá trình ETL (Extract - Transform - Load):
+- EXTRACT (Trích xuất): Kéo dữ liệu JSON từ API (Có cơ chế tự động Sleep 60s để chống Rate Limit).
+- TRANSFORM (Biến đổi - Data Processing):
+  + Làm sạch dữ liệu (Drop null, ép kiểu Text về Numeric để làm Chart).
+  + Tính toán chỉ số phái sinh bằng Pandas (rolling window): Moving Average (MA5, MA10), Biên độ (Volatility).
+  + Tạo tín hiệu xu hướng (Trend Signals): Hệ thống tự sinh nhãn "Bullish" (Mua) nếu Giá đóng cửa > MA5 > MA10_ hoặc "Bearish" (Bán) ở điều kiện ngược lại.
+- LOAD (Tải dữ liệu): Chèn (Insert/Upsert) vào kho PostgreSQL.
+
+[Gợi ý thuyết trình (Nói)]
+"Phần cốt lõi Data Engineer nằm ở luồng ETL. Ở giai đoạn Extract, em có cài cắm cơ chế bắt Try/Catch để xử lý lỗi Rate Limit của API. Ở giai đoạn Transform tầng Silver, Pandas sẽ dọn sạch dữ liệu rác, sau đó ở tầng Gold, em dùng hàm rolling của Pandas để tính trung bình trượt MA5, MA10 và tự động sinh ra tín hiệu Mua/Bán (Bullish/Bearish). Cuối cùng dữ liệu được UPSERT vào Data Warehouse thông qua thư viện Psycopg2."
+
+---
+
+# SLIDE 7: DATA STORAGE - MEDALLION ARCHITECTURE (Lưu trữ Dữ liệu)
+
+[Nội dung trên Slide]
+(CẦN HÌNH ẢNH: Chụp màn hình Schema.sql đoạn Create schema bronze, silver, gold)
+Thiết kế Data Warehouse - PostgreSQL (Deploy via Docker)
+- BRONZE LAYER (Dữ liệu thô): Lưu JSONB nguyên bản (`raw_stock_data`) -> Đảm bảo Audit traceback, chống mất data.
+- SILVER LAYER (Chuẩn hóa): Lưu giá đã làm sạch (`prices`, `stocks`) -> Data sẵn sàng sử dụng.
+- GOLD LAYER (Phân tích Kinh doanh): Lưu Metrics (`stock_metrics`, `stock_news`) -> Lưu trữ kết quả đã tính toán (MA5/10), View `v_market_snapshot` tối ưu hiệu năng Query.
+
+[Gợi ý thuyết trình (Nói)]
+"Thay vì đổ chung vào 1 bảng, cơ sở dữ liệu của dự án chuẩn hóa theo mô hình Medallion của Databricks. Tầng Bronze giữ lại toàn bộ cục JSON thô từ API để Audit phòng trường hợp lỗi. Tầng Silver chứa dữ liệu làm sạch. Đặc biệt tầng Gold chứa số liệu phân tích và các View như v_market_snapshot. Cách này giúp Backend lấy số liệu cực kỳ nhanh để vẽ lên Chart mà không bắt hệ thống Frontend tính toán hay tải lại từ đầu."
+
+---
+
+# SLIDE 8: WORKFLOW ORCHESTRATION (Điều phối tự động bằng Airflow)
+
+[Nội dung trên Slide]
+(CẦN HÌNH ẢNH: Giao diện web Airflow DAG màu xanh lá Success)
+Quản lý luồng tự động (Automation):
+- Công cụ: Apache Airflow (Chạy độc lập trên Docker).
+- Vai trò điều phối:
+  + Scheduling: Trích xuất Dữ liệu hàng ngày hoàn toàn tự động theo Cron Job.
+  + Task Dependencies: Tách biệt rạch ròi quy trình `Task_Extract` -> `Task_Transform` -> `Task_Load`.
+  + Monitor & Alert: Nếu API sập, Task sẽ báo đỏ (Fail) trên Graph, dễ dàng Retry lại ngay tại giao diện.
+
+[Gợi ý thuyết trình (Nói)]
+"Để hệ thống chạy liên tục mà không cần can thiệp tay, em sử dụng Apache Airflow. Airflow lịch trình hóa chuỗi ETL này thành một DAG. Em có thể theo dõi xem task Extract, Transform, Load xanh (Pass) hay đỏ (Fail) mỗi đợt. Nếu API Alfa Vantage sập, Airflow sẽ có cơ chế alert hoặc tự động chặn các luồng đằng sau lại để không làm nát Database."
+
+---
+
+# SLIDE 9: BEST PRACTICES & ENGINEERING MINDSET 🔥 (ĐỈNH CAO KIẾN TRÚC - THÊM MỚI BẮT BUỘC)
+
+[Nội dung trên Slide]
+Các kĩ thuật tính toán & bảo vệ luồng Data mạnh mẽ:
+- Tính Lặp Khả Biến (Idempotency): Pipeline dùng `UPSERT (ON CONFLICT DO UPDATE)` ở PostgreSQL. Cho dù Airflow chạy lỗi và chạy lại 100 lần, Database không bao giờ bị đúp dòng (Duplicate), đảm bảo tính toàn vẹn 100%.
+- Cấu trúc Linh Hoạt (Schema Evolution): Tầng Bronze lưu trọn vẹn `JSONB` thô -> Nếu tương lai API đổi cột, DB không bị sập (Crash), ta luôn khôi phục được Data cũ.
+- Fault Tolerance (Khả năng chịu lỗi): Code Python Extract có bắt Catch Exception và `time.sleep()` 60 giây khi bị khóa Rate Limit thay vì văng Exception làm đứt gãy luồng Pipeline.
+
+[Gợi ý thuyết trình (Nói)]
+"Thứ làm cho Data Pipeline của dự án này đạt chuẩn Production là tư duy làm hệ thống bền bỉ. Em áp dụng Nguyên tắc Lặp Khả Biến (Idempotent), tức là em viết SQL dùng lệnh UPSERT. Do đó dù Airflow có bị hỏng chạy lại 10 lần một ngày, DB em vẫn update đè lên giá trị mới nhất chứ không bị phình to rác data. Thêm nữa, tầng Bronze lưu bằng JSONB giúp database sống sót mượt mà ngay cả khi đối tác API họ thay đổi cấu trúc dữ liệu."
+
+---
+
+# SLIDE 10: BACKEND API SYSTEM (Hệ thống API Phục vụ hiển thị)
+
+[Nội dung trên Slide]
+Cung cấp dữ liệu với tốc độ cao:
+- Công nghệ: Node.js (Express), kết nối DB qua Module Pool Connection.
+- RESTful Endpoints:
+  + `GET /api/ticker`: Lấy giá hiện tại & phần trăm thay đổi siêu nhanh từ lớp Gold.
+  + `GET /api/prices?symbol`: Cung cấp lịch sử chuỗi thời gian để vẽ đồ thị (Line Chart).
+- Logic Nghiệp Vụ Backend: Không xử lý tính toán Data nặng nề, chỉ đóng vai trò Truy Xuất & Cung Cấp, tôn trọng kiến trúc Data Warehouse.
+
+[Gợi ý thuyết trình (Nói)]
+"Tại lớp Backend, NodeJS đóng vai trò như chiếc cầu nối. Nó bóc tách dữ liệu từ lớp Gold trong DB thông qua các API chuyên biệt phục vụ cho hiển thị. Điểm mấu chốt là Backend của em chạy rất nhẹ, không gánh việc tính toán MA5 hay chỉ số, vì mọi Logic nghiệp vụ nặng nề đó lớp Gold của Warehouse đã lo hết rồi (Data-centric design)."
+
+---
+
+# SLIDE 11: FRONTEND / UI DASHBOARD (Giao diện người dùng)
+
+[Nội dung trên Slide]
+(CẦN HÌNH ẢNH: Screenshot giao diện biểu đồ Dark mode của ứng dụng)
+Thiết kế trực quan & Tốc độ:
+- Giao diện: Dark theme hiện đại, phong cách Fintech chuyên nghiệp.
+- Tính năng:
+  + Biểu đồ động (Chart.js) OHLCV tích hợp trực tiếp 2 đường MA5/MA10.
+  + Bảng theo dõi toàn thị trường (Market Table) có Huy hiệu (Badge) thay đổi giá Đỏ (Giảm) / Xanh (Tăng).
+- Responsive Design: Thích ứng trên nhiều thiết bị.
+
+[Gợi ý thuyết trình (Nói)]
+"Về giao diện, em thiết kế mang phong cách của các nền tảng Fintech. Bảng hiển thị thông tin rõ ràng với biểu đồ Chart.js trực quan. MA5 và MA10 được kẻ sẵn, cộng với các Huy hiệu màu tự động nháy Đỏ hoặc Xanh dựa vào % dao động. F0 chỉ cần liếc qua là biết con mã nào đang xanh (tăng) hay đỏ (giảm)."
+
+---
+
+# SLIDE 12: AI INTEGRATION / RAG MODEL (Trợ lý Phân Tích Thông Minh) 🔥 (Đỉnh cao AI)
+
+[Nội dung trên Slide]
+(CẦN HÌNH ẢNH: Screenshot đoạn code `chat.js` chỗ Truy vấn ngữ cảnh `buildStockMarketContext` và Screenshot Chatbot)
+Kiến trúc RAG (Retrieval-Augmented Generation) chống ảo giác:
+- Vấn đề: AI thông thường trả lời bừa, kiến thức cũ.
+- Giải pháp:
+  1. Retrieve: Backend Query kéo toàn bộ Data hiện tại từ `gold.v_market_snapshot` (Giá, MA5, Tín hiệu Bullish/Bearish) và 3 bài báo (News) mới nhất.
+  2. Augment: Đắp tất cả số lượng thực tế này vào "System Prompt Context" (Ngữ cảnh ẩn).
+  3. Generate: Gửi bối cảnh đó cho GPT-4o-mini kèm câu hỏi của User.
+- Kết quả: Chatbot AI trả lời CHÍNH XÁC dự trên dữ liệu Live DB, phân tích sắc sảo dưới góc nhìn F0.
+
+[Gợi ý thuyết trình (Nói)]
+"Tính năng đắt giá nhất của dự án là Trợ lý AI và em áp dụng kiến trúc chuẩn RAG. Khác với ChatGPT thông thường không có Internet, AI của em đọc dữa liệu THỰC TẾ. Khi user hỏi, Backend lập tức chọc xuống tầng Gold lấy giá đóng cửa hiện tại, Tín hiệu Bullish hay Bearish, tin bài báo mới nhất. Em ép toàn bộ dữ liệu này vào System Prompt. Bằng cách này, AI đưa ra khuyên ĐÚNG DỰA TRÊN SỐ LIỆU TẠI THỜI ĐIỂM HỎI, loại bỏ triệt để bệnh 'ảo giác' phịa data của AI."
+
+---
+
+# SLIDE 13: DEVOPS & INFRASTRUCTURE (Triển khai & Vận hành)
+
+[Nội dung trên Slide]
+(CẦN HÌNH ẢNH: Chụp Terminal đen ngòm lúc chạy `docker-compose up -d`)
+Công nghệ Container & Quản trị:
+- Đóng gói toàn bộ bằng Docker & Docker Compose:
+  + Container 1: PostgreSQL 15 & pgAdmin.
+  + Container 2: Airflow (Web/Scheduler).
+  + Container 3: Node.js Backend API.
+- Lợi ích: Triển khai One-click Deployment, tránh lỗi "Works on my machine", quản lý Network/Port tập trung.
+
+[Gợi ý thuyết trình (Nói)]
+"Để đảm bảo mang dự án này triển khai lên môi trường nào cũng chạy mượt, 100% hệ thống được đóng gói bằng Docker. Em có 1 file docker-compose. Chỉ với 1 câu lệnh `docker-compose up`, Postgres, Airflow và Backend API sẽ tự động start lên và kết nối với nhau trên một hệ sinh thái Network nội bộ kề nhau. Em không cần setup môi trường thủ công."
+
+---
+
+# SLIDE 14: Q&A DỰ TRÙ: GỠ RỐI TÌNH HUỐNG (Không đưa vào Slide nếu bảo vệ ngắn, dùng làm backup)
+
+[Phần này bạn TỰ ĐỌC ĐỂ NHỚ CÂU TRẢ LỜI, Không đưa slide]
+- CÂU HỎI CỦA GIẢM KHẢO: "Làm sao đảm bảo ETL chạy lại không nạp đúp Data?"
+- TRẢ LỜI: "Ở tầng Silver và Gold, em thiết kế SQL gán UNIQUE(stock_id, date) và dùng kĩ thuật UPSERT (ON CONFLICT DO UPDATE). Đây là kĩ năng Idempotent Pipeline cốt lõi, nếu Data bằng đúng ngày đó về lại, nó sẽ Update dòng cũ thành giá trị mới chứ Database không có bị Duplicate Data ạ."
+
+- CÂU HỎI CỦA GIÁM KHẢO: "Tại sao Frontend không tự tính MA5/MA10 cho nhẹ server mà phải là DB Tính?"
+- TRẢ LỜI: "Dạ vì em áp dụng chuẩn Data Warehouse tập trung. Tầng Gold phải nắm Logic tính toán doanh nghiệp cốt lõi (Source of Truth). Database tính sẵn một lần thì sau này dù Frontend Web gọi, Mobile gọi hay AI gọi, cũng chỉ trả về 1 kết quả nhất quán siêu nhanh mà không phải tốn sức maintain (bảo trì) công thức tại nhiều nơi."
+
+- CÂU HỎI CỦA GIÁM KHẢO: "Kiến trúc Medallion của Databricks thường dùng cho Big Data, dự án này sao phải dùng?"
+- TRẢ LỜI: "Tuy volume chưa siêu lớn, nhưng tổ chức theo Bronze-Silver-Gold giúp Data Lineage cực kỳ rõ ràng. Nếu Chart sai (Gold lỗi), em lùi về coi Silver thấy bất thường, nếu Silver fail em có file JSON gốc ở Bronze để khôi phục (Replay data). Đó là tư duy dự phòng đứt gãy ạ."
+
+---
+
+# SLIDE 15: LIVE DEMO & FUTURE WORK (Kết luận & Định hướng)
+
+[Nội dung trên Slide]
+Tương lai hệ thống & Trình diễn thực tế:
+- Mở rộng: Nâng cấp xử lý luồng (Realtime Streaming) với Apache Kafka.
+- Cảnh báo tức thì (Alerting): Tích hợp webhook Telegram báo Tín hiệu Bullish/Bearish.
+- Mời Thầy/Cô và Hội đồng xem thao tác trên màn hình:
+  + Khởi chạy giao diện UI.
+  + Đặt câu hỏi thực tế với AI Chatbot.
+
+[Gợi ý thuyết trình (Nói)]
+"Về tương lai, em định hướng bổ sung ngay 1 con Bot đẩy thông báo qua Telegram khi hệ thống dò ra Tín hiệu Bullish, phân lớp người dùng VIP. Cuối cùng, để khép lại phần thuyết trình, em xin mời thầy cô và hội đồng theo dõi trực tiếp cách AI Chatbot của tụi em đọc Database trên màn hình Demo..."

@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # =============================================
+  # PostgreSQL — Data Warehouse
+  # =============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: stock_postgres
+    environment:
+      POSTGRES_DB:       stock_db
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5454:5432" # Đổi sang 5454 vì máy bạn đang có container khác chiếm mất cổng 5433 (postgres-dev)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d stock_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # =============================================
+  # pgAdmin — Database GUI
+  # =============================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: stock_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL:    admin@stock.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # =============================================
+  # Backend API — Node.js
+  # =============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stock_backend
+    environment:
+      DB_HOST:         postgres
+      DB_PORT:         5432
+      DB_NAME:         stock_db
+      DB_USER:         postgres
+      DB_PASSWORD:     postgres123
+      PORT:            3000
+      NODE_ENV:        production
+      OPENAI_API_KEY:  ${OPENAI_API_KEY:-}
+      OPENAI_MODEL:    ${OPENAI_MODEL:-gpt-4o-mini}
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./dashboard:/app/../dashboard
+
+  # =============================================
+  # Airflow — Automation Scheduler (Standalone)
+  # =============================================
+  airflow:
+    image: apache/airflow:2.10.5-python3.11
+    container_name: stock_airflow
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment:
+      # Airflow Basic Config
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres123@postgres:5432/stock_db
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres123@postgres:5432/stock_db
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      
+      # ⚠️  Cài các thư viện bổ sung ngay khi khởi động
+      - _PIP_ADDITIONAL_REQUIREMENTS=requests pandas numpy psycopg2-binary python-dotenv
+      
+      # Load biến môi trường từ .env
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=stock_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./etl:/opt/airflow/etl
+      - ./database:/opt/airflow/database
+      - ./backend/.env:/opt/airflow/backend/.env
+    command: standalone
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local

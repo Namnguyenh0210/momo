@@ -1,0 +1,175 @@
+"""
+Airflow DAG — Crypto ETL Pipeline
+Schedule: mỗi 5 phút
+Tasks: extract_task >> transform_task >> load_task
+"""
+
+from datetime import datetime, timedelta
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+import sys
+import os
+
+# Thêm đường dẫn ETL module vào Python path
+ETL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../etl"))
+sys.path.insert(0, ETL_PATH)
+
+# ===========================
+# DAG DEFAULT ARGS
+# ===========================
+default_args = {
+    "owner":             "data_engineer",
+    "depends_on_past":   False,
+    "start_date":        datetime(2025, 1, 1),
+    "email_on_failure":  False,
+    "email_on_retry":    False,
+    "retries":           3,
+    "retry_delay":       timedelta(seconds=30),
+    "retry_exponential_backoff": True,
+}
+
+# ===========================
+# DAG DEFINITION
+# ===========================
+dag = DAG(
+    dag_id="crypto_etl",
+    default_args=default_args,
+    description="Thu thập, xử lý và lưu dữ liệu Crypto từ Binance API",
+    schedule_interval="*/5 * * * *",   # Mỗi 5 phút
+    catchup=False,
+    max_active_runs=1,                 # Chỉ 1 run cùng lúc
+    tags=["crypto", "etl", "binance", "data-engineering"],
+)
+
+# ===========================
+# TASK FUNCTIONS
+# ===========================
+
+def run_extract(**context):
+    """Task 1: Extract dữ liệu từ Binance."""
+    from extract import extract
+    
+    raw_data = extract(mode="crypto")
+    
+    # Push sang XCom để các task sau dùng
+    # (Với data lớn dùng S3/GCS thay vì XCom)
+    context["task_instance"].xcom_push(
+        key="extracted_at",
+        value=str(raw_data["extracted_at"])
+    )
+    
+    # Lưu tạm vào file (simple approach) 
+    import pickle, tempfile
+    tmp_file = "/tmp/crypto_raw_data.pkl"
+    with open(tmp_file, "wb") as f:
+        pickle.dump(raw_data, f)
+    
+    ticker_count = len(raw_data.get("ticker", []))
+    klines_count = len(raw_data.get("klines", []))
+    print(f"✅ Extract done — ticker: {ticker_count}, klines: {klines_count}")
+    return {"rows": ticker_count + klines_count}
+
+
+def run_transform(**context):
+    """Task 2: Transform và tính chỉ số kỹ thuật."""
+    from transform import transform
+    import pickle
+    
+    with open("/tmp/crypto_raw_data.pkl", "rb") as f:
+        raw_data = pickle.load(f)
+    
+    transformed = transform(raw_data)
+    
+    with open("/tmp/crypto_transformed.pkl", "wb") as f:
+        pickle.dump(transformed, f)
+    
+    ticker_rows = len(transformed.get("ticker", []))
+    klines_rows = len(transformed.get("klines", []))
+    print(f"✅ Transform done — ticker: {ticker_rows}, klines: {klines_rows}")
+    return {"rows": ticker_rows + klines_rows}
+
+
+def run_load(**context):
+    """Task 3: Load dữ liệu vào PostgreSQL."""
+    from load import load
+    import pickle
+    
+    with open("/tmp/crypto_transformed.pkl", "rb") as f:
+        transformed = pickle.load(f)
+    
+    stats = load(transformed)
+    
+    # Clean up temp files
+    import os
+    for f in ["/tmp/crypto_raw_data.pkl", "/tmp/crypto_transformed.pkl"]:
+        if os.path.exists(f):
+            os.remove(f)
+    
+    print(f"✅ Load done — stats: {stats}")
+    return stats
+
+
+def run_cleanup(**context):
+    """Task 4: Xóa dữ liệu cũ hơn 30 ngày để tối ưu storage."""
+    import psycopg2
+    import os
+    
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", 5432)),
+        dbname=os.getenv("DB_NAME", "crypto_db"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "postgres123"),
+    )
+    
+    with conn.cursor() as cur:
+        # Xóa prices + ticker cũ hơn 30 ngày
+        cur.execute("DELETE FROM prices WHERE timestamp < NOW() - INTERVAL '30 days'")
+        deleted_prices = cur.rowcount
+        
+        cur.execute("DELETE FROM ticker_snapshots WHERE timestamp < NOW() - INTERVAL '7 days'")
+        deleted_tickers = cur.rowcount
+        
+        cur.execute("DELETE FROM metrics WHERE timestamp < NOW() - INTERVAL '30 days'")
+        deleted_metrics = cur.rowcount
+    
+    conn.commit()
+    conn.close()
+    
+    print(f"🧹 Cleanup: prices={deleted_prices}, tickers={deleted_tickers}, metrics={deleted_metrics}")
+
+
+# ===========================
+# TASK OPERATORS
+# ===========================
+
+extract_task = PythonOperator(
+    task_id="extract_from_binance",
+    python_callable=run_extract,
+    dag=dag,
+)
+
+transform_task = PythonOperator(
+    task_id="transform_data",
+    python_callable=run_transform,
+    dag=dag,
+)
+
+load_task = PythonOperator(
+    task_id="load_to_postgres",
+    python_callable=run_load,
+    dag=dag,
+)
+
+# Cleanup mỗi giờ (1 lần / 12 ETL runs)
+cleanup_task = PythonOperator(
+    task_id="cleanup_old_data",
+    python_callable=run_cleanup,
+    dag=dag,
+)
+
+# ===========================
+# PIPELINE FLOW
+# ===========================
+# extract → transform → load → cleanup
+extract_task >> transform_task >> load_task >> cleanup_task
